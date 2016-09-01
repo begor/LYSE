@@ -1,12 +1,13 @@
+%%% Simple server
 -module(server).
--author("egor").
-
-%% API
 -compile(export_all).
 -record(state, {events, clients}).
 -record(event, {name="", desc="", pid, timeout=10}).
 
+%%% Public interface hiding actual message passing.
+
 start() ->
+  % Singleton-like hack: we need only one server running at a time.
   register(?MODULE, Pid=spawn(?MODULE, init, [])),
   Pid.
 
@@ -39,14 +40,18 @@ cancel(Name) ->
     {error, timeout}
   end.
 
+%%% Implementation
+
 init() ->
   loop(#state{events = orddict:new(),
               clients = orddict:new()}).
 
-
 loop(S = #state{clients = Clients, events = Events}) ->
   receive
     {Pid, MsgRef, {subscribe, Client}} ->
+      % Monitor: The only other time we’ll need
+      % to fetch the client ID will be if we receive a monitor’s
+      % EXIT message, which will contain the reference
       Ref = erlang:monitor(process, Client),
       NewClient = orddict:store(Ref, Client, Clients),
       Pid ! {MsgRef, ok},
@@ -77,7 +82,7 @@ loop(S = #state{clients = Clients, events = Events}) ->
     {done, Name} ->
       case orddict:find(Name, Events) of
         {ok, E} ->
-          send_to_clients(E, Clients),
+          send_to_clients(E, Clients), % Notify all the clients in Clients dict
           NewEvents = orddict:erase(E, Events),
           loop(S#state{events = NewEvents});
         error ->

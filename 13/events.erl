@@ -1,8 +1,9 @@
+%%% Events functionality
 -module(events).
 -author("egor").
 
 %% API
--compile(export_all).
+-compile(export_all). % Just for easy compiling
 -record(state, {server, name="", to_go=0}).
 
 start(EventName, Delay) ->
@@ -13,17 +14,16 @@ start_link(EventName, Delay) ->
 
 init(Server, Name, Delay) ->
   NewDelay = normalize(Delay),
-  io:format("Delay: ~p~n", [NewDelay]),
   loop(#state{server = Server, name = Name, to_go = NewDelay}).
 
 cancel(Pid) ->
-  Ref = erlang:monitor(process, Pid),
+  Ref = erlang:monitor(process, Pid), % We need to check if event isn't already dead
   Pid ! {self(), Ref, cancel},
   receive
     {Ref, ok} ->
-      erlang:demonitor(Ref, [flush]),
-       ok;
-    {'DOWN', Ref, process, Pid, _Reason} ->
+      erlang:demonitor(Ref, [flush]), % No need to monitor it anymore, it's basically dead
+      ok;
+    {'DOWN', Ref, process, Pid, _Reason} -> % Already killed, just ok
       ok
   end.
 
@@ -31,8 +31,8 @@ loop(S = #state{server=Server, to_go=[T|Next]}) ->
   receive
     {Server, Ref, cancel} ->
       Server ! {Ref, ok}
-  after T * 1000 ->
-    case Next of
+  after T * 1000 -> % * 1000 = seconds
+    case Next of % We slice big delays into chunks in normalize
       [] -> Server ! {done, S#state.name};
       _ -> loop(S=#state{to_go = Next})
     end
