@@ -8,6 +8,9 @@
 start(EventName, Delay) ->
   spawn(?MODULE, init, [self(), EventName, Delay]).
 
+start_link(EventName, Delay) ->
+  spawn_link(?MODULE, init, [self(), EventName, Delay]).
+
 init(Server, Name, Delay) ->
   NewDelay = normalize(Delay),
   io:format("Delay: ~p~n", [NewDelay]),
