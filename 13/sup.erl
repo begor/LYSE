@@ -3,8 +3,6 @@
 %%% It will restart the process (2) it watches indefinitely, unless
 %%% the supervisor itself is terminated with a shutdown exit signal (3).
 -module(sup).
--author("egor").
-
 -compile(export_all).
 
 
@@ -18,12 +16,13 @@ init({Mod, Args}) ->
   process_flag(trap_exit, true), % Need to catch those exit signals
   loop({Mod, start_link, Args}). % (1) We need module which has start_link function
 
+%% @doc Main supervisor's loop. Starts child's processes and waits messages from them.
 loop({M, F, A}) ->
-  Pid = apply(M, F, A),
+  Pid = apply(M, F, A), % Applies a function F from a module M to arguments A.
   receive
-    {'EXIT', _From, shutdown} -> % (3) Kill supervisor and all its childs.
-      exit(shutdown); % will kill the child too
-    {'EXIT', Pid, Reason} ->
-      io:format("Process ~p exited for reason ~p~n",[Pid,Reason]),
-      loop({M,F,A}) % (2) Restart dead process
+    {'EXIT', _From, shutdown} -> % (3) Child was brutally killed, so will be a supervisor and all its childs.
+      exit(shutdown);
+    {'EXIT', Pid, Reason} -> % (2) Child is dead, just restart it.
+      io:format("Process ~p exited for reason ~p~n", [Pid, Reason]),
+      loop({M, F, A})
   end.
