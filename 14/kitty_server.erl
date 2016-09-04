@@ -1,13 +1,14 @@
 %%% Naive handwritten implementation of a simple server.
 -module(kitty_server).
 -export([start_link/0, order/4, return/2, close_shop/1]).
+-export([init/1, handle_call/3, handle_cast/2]). % For my_server support
 
 -record(cat, {name, color = "red", desc}).
 
 %%% API
 
 %% @doc Spawns link with a server.
-start_link() -> spawn_link(fun init/0).
+start_link() -> my_server:start_link(?MODULE, []).
 
 %% @doc Orders a cat. Synchronous call (call that waits an answer to proceed).
 order(Pid, Name, Color, Desc) ->
@@ -15,8 +16,7 @@ order(Pid, Name, Color, Desc) ->
 
 %% @doc Returns a cat. Asynchronous call (call that doesn't wait an answer to proceed).
 return(Pid, Cat) ->
-  Pid ! {return, Cat},
-  ok.
+  my_server:cast(Pid, {return, Cat}).
 
 %% @doc Closes shop.
 close_shop(Pid) ->
@@ -24,23 +24,23 @@ close_shop(Pid) ->
 
 %%% Implementation
 
-init() ->
-  loop([]).
+init([]) -> [].
 
-loop(Cats) ->
-  receive
-    {Pid, Ref, {order, Name, Color, Desc}} ->
-      case Cats of
-        [C | Cs] -> Pid ! {Ref, C}, loop(Cs);
-        [] -> Pid ! {Ref, make_cat(Name, Color, Desc)}, loop([])
-      end;
-    {return, Cat = #cat{}} ->
-      loop([Cat | Cats]);
-    {Pid, Ref, terminate} ->
-      Pid ! {Ref, ok}, terminate(Cats);
-    Unknown ->
-      io:format("Server got unknown ~p~n", [Unknown]), loop(Cats)
-  end.
+handle_call({order, Name, Color, Desc}, From, Cats) ->
+  case Cats of
+    [C | Cs] ->
+      my_server:reply(From, C),
+      Cs;
+    [] ->
+      my_server:reply(From, make_cat(Name, Color, Desc)),
+      Cats
+  end;
+handle_call(terminate, From, Cats) ->
+  my_server:reply(From, ok),
+  terminate(Cats).
+
+handle_cast({return, Cat = #cat{}}, Cats) ->
+  [Cat | Cats].
 
 make_cat(Name, Color, Desc) ->
   #cat{name = Name,
