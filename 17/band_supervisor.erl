@@ -23,6 +23,13 @@ init(angry) ->
 init(jerk) ->
   %% fires all if someone failed. 1 failure in 60 secs means the end.
   init({one_for_all, 1, 60});
+init(jamband) ->
+  %% Using simple_one_for_one for a dynamic supervisor.
+  {ok, {{simple_one_for_one, 3, 60},
+    [{jam_musician,
+      {musicians, start_link, []},
+      temporary, 1000, worker, [musicians]}
+    ]}};
 init({RestartStrategy, MaxRestart, MaxTime}) ->
   {ok, {{RestartStrategy, MaxRestart, MaxTime},
     [{singer,
