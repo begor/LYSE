@@ -1,6 +1,16 @@
 %%% Simple generic server. Abstracts sync and async messages, main loop, termination, etc.
 -module(my_server).
--export([call/2, cast/2, loop/2, reply/2]).
+-export([call/2, cast/2, reply/2, start/2, start_link/2]).
+
+%%% API
+
+%% @doc Starts a Module with an initial state.
+start(Module, InitialState) ->
+  spawn(fun() -> init(Module, InitialState) end).
+
+%% @doc Starts a link to Module with an initial state.
+start_link(Module, InitialState) ->
+  spawn(fun() -> init(Module, InitialState) end).
 
 %% @doc Call a synchronous message Msg on process Pid.
 call(Pid, Msg) ->
@@ -21,6 +31,16 @@ cast(Pid, Msg) ->
   Pid ! {async, Msg},
   ok.
 
+
+%% @doc Abstracts sending a reply.
+reply({Pid, Ref}, Reply) ->
+  Pid ! {Ref, Reply}.
+
+%%% Implementation
+
+init(Module, State) ->
+  loop(Module, State).
+
 %% @doc Abstracts main loop of a process.
 loop(Module, State) ->
   receive
@@ -32,7 +52,3 @@ loop(Module, State) ->
       NewState = Module:handle_cast(Msg, State),
       loop(Module, NewState)
   end.
-
-%% @doc Abstracts sending a reply.
-reply({Pid, Ref}, Reply) ->
-  Pid ! {Ref, Reply}.
