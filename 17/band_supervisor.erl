@@ -1,4 +1,4 @@
-
+%%% Simple supervisor implementation.
 -module(band_supervisor).
 -author("egor").
 -behaviour(supervisor).
@@ -7,8 +7,14 @@
 -export([start_link/1]).
 -export([init/1]).
 
+%% @doc Starts a link with supervisor of a given Type.
 start_link(Type) -> supervisor:start_link({local, ?MODULE}, ?MODULE, Type).
 
+%% @doc The band supervisor will allow its band members to make a few
+%% mistakes before shutting down all operations, based on what
+%% mood he's in. A lenient supervisor will tolerate more mistakes
+%% than an angry supervisor, who'll tolerate more than a
+%% complete jerk supervisor.
 init(lenient) ->
   init({one_for_one, 3, 60}); %% 4 failures in 60 secs means the end.
 init(angry) ->

@@ -47,10 +47,10 @@ handle_call(terminate, _From, Cats) ->
   {stop, normal, ok, Cats}.
 
 handle_cast({return, Cat = #cat{}}, Cats) ->
-  {noreply, [Cat|Cats]}.
+  {noreply, [Cat | Cats]}.
 
 handle_info(Msg, Cats) ->
-  io:format("Unexpected message: ~p~n",[Msg]),
+  io:format("Unexpected message: ~p~n", [Msg]),
   {noreply, Cats}.
 
 terminate(notmal, Cats) ->
