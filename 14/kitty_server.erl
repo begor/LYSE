@@ -11,16 +11,7 @@ start_link() -> spawn_link(fun init/0).
 
 %% @doc Orders a cat. Synchronous call (call that waits an answer to proceed).
 order(Pid, Name, Color, Desc) ->
-  Ref = erlang:monitor(process, Pid),
-  Pid ! {self(), Ref, {order, Name, Color, Desc}},
-  receive
-    {Ref, Cat} ->
-      erlang:demonitor(Ref, [flush]),
-      Cat;
-    {'DOWN', Ref, process, Pid, Reason} ->
-      erlang:error(Reason)
-  after 5000 -> erlang:error(timeout)
-  end.
+  my_server:call(Pid, {order, Name, Color, Desc}).
 
 %% @doc Returns a cat. Asynchronous call (call that doesn't wait an answer to proceed).
 return(Pid, Cat) ->
@@ -29,17 +20,7 @@ return(Pid, Cat) ->
 
 %% @doc Closes shop.
 close_shop(Pid) ->
-  Ref = erlang:monitor(process, Pid),
-  Pid ! {self(), Ref, terminate},
-  receive
-    {Ref, ok} ->
-      erlang:demonitor(Ref, [flush]),
-      ok;
-    {'DOWN', Ref, process, Pid, Reason} ->
-      erlang:error(Reason)
-  after 5000 ->
-    erlang:error(timeout)
-  end.
+  my_server:call(Pid, terminate).
 
 %%% Implementation
 
