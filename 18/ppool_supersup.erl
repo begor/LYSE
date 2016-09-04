@@ -15,8 +15,7 @@ start_link() ->
 %% Let's do it brutally!
 stop() ->
   case whereis(ppool) of
-    P when is_pid(P) ->
-      exit(P, kill);
+    P when is_pid(P) -> exit(P, kill);
     _ -> ok
   end.
 
