@@ -1,4 +1,4 @@
-%%% Simplest possible FSM implementation
+%%% Simplest possible FSM implementation with synchronous events.
 -module(cat_fsm).
 -export([start/0, event/2]).
 

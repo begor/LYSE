@@ -1,3 +1,4 @@
+%%% Another simple FSM implementation with asynchronous events.
 -module(dog_fsm).
 
 %% API
