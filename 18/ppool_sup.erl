@@ -2,7 +2,7 @@
 -module(ppool_sup).
 -behaviour(supervisor).
 
--export([init/1]). % Supervisor
+-export([init/1, start_link/3]). % Supervisor
 
 start_link(Name, Limit, MFA) ->
   supervisor:start_link(?MODULE, {Name, Limit, MFA}).
