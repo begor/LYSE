@@ -7,8 +7,6 @@
 %%%%%%%%%%%%%%%%%
 %%% INTERFACE %%%
 %%%%%%%%%%%%%%%%%
-
-% server is started using {global, ?MODULE}
 start_link() ->
   gen_server:start_link({global, ?MODULE}, ?MODULE, [], []).
 
