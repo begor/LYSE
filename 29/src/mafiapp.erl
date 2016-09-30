@@ -1,7 +1,7 @@
 -module(mafiapp).
 -behaviour(application).
 
--export([install/1, start/2, stop/1, add_friend/4, add_service/4]).
+-export([install/1, start/2, stop/1, add_friend/4, add_service/4, friend_by_name/1]).
 
 -record(mafiapp_friends, {name,
   contact = [],
@@ -27,6 +27,19 @@ add_friend(Name, Contact, Info, Expertise) ->
       expertise = Expertise})
       end,
   mnesia:activity(transaction, F).
+
+friend_by_name(Name) ->
+  F = fun() ->
+    case mnesia:read({mafiapp_friends, Name}) of
+      [#mafiapp_friends{contact=C, info=I, expertise=E}] ->
+        {Name,C,I,E,find_services(Name)};
+      [] ->
+        undefined
+    end
+      end,
+  mnesia:activity(transaction, F).
+
+find_services(_Name) -> undefined.
 
 add_service(From, To, Date, Description) ->
   F = fun() ->
