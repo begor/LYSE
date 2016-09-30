@@ -2,7 +2,7 @@
 -behaviour(application).
 -include_lib("stdlib/include/ms_transform.hrl").
 
--export([install/1, start/2, stop/1, add_friend/4, add_service/4, friend_by_name/1]).
+-export([install/1, start/2, stop/1, add_friend/4, add_service/4, friend_by_name/1, friend_by_expertise/1]).
 
 -record(mafiapp_friends, {name,
   contact = [],
@@ -32,8 +32,8 @@ add_friend(Name, Contact, Info, Expertise) ->
 friend_by_name(Name) ->
   F = fun() ->
     case mnesia:read({mafiapp_friends, Name}) of
-      [#mafiapp_friends{contact=C, info=I, expertise=E}] ->
-        {Name,C,I,E,find_services(Name)};
+      [#mafiapp_friends{contact = C, info = I, expertise = E}] ->
+        {Name, C, I, E, find_services(Name)};
       [] ->
         undefined
     end
@@ -43,17 +43,31 @@ friend_by_name(Name) ->
 %% whenever From matches Name we return a {to, ToName, Date, Description} tuple.
 %% Whenever Name matches To instead, the function returns a tuple of the form {from, FromName, Date, Description},
 %% allowing us to have a single operation that includes both services given and received.
+%% find_services/1 does not run in any transaction.
+%% That's because the function is only called within friend_by_name/1, which runs in a transaction already.
 find_services(Name) ->
   Match = ets:fun2ms(
-    fun(#mafiapp_services{from=From, to=To, date=D, description=Desc})
+    fun(#mafiapp_services{from = From, to = To, date = D, description = Desc})
       when From =:= Name ->
       {to, To, D, Desc};
-      (#mafiapp_services{from=From, to=To, date=D, description=Desc})
+      (#mafiapp_services{from = From, to = To, date = D, description = Desc})
         when To =:= Name ->
         {from, From, D, Desc}
     end
   ),
   mnesia:select(mafiapp_services, Match).
+
+friend_by_expertise(Expertise) ->
+  Pattern = #mafiapp_friends{_ = '_',
+    expertise = Expertise},
+  F = fun() ->
+    Res = mnesia:match_object(Pattern),
+    [{Name, C, I, Expertise, find_services(Name)} ||
+      #mafiapp_friends{name = Name,
+        contact = C,
+        info = I} <- Res]
+      end,
+  mnesia:activity(transaction, F).
 
 add_service(From, To, Date, Description) ->
   F = fun() ->
