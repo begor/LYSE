@@ -2,7 +2,7 @@
 -behaviour(application).
 -include_lib("stdlib/include/ms_transform.hrl").
 
--export([install/1, start/2, stop/1, add_friend/4, add_service/4, friend_by_name/1, friend_by_expertise/1, debts/1]).
+-export([install/1, start/2, stop/1, add_friend/4, add_service/4, friend_by_name/1, friend_by_expertise/1, debts/1, add_enemy/2, find_enemy/1, enemy_killed/1]).
 
 -record(mafiapp_friends, {name,
   contact = [],
@@ -12,10 +12,13 @@
   to,
   date,
   description}).
+-record(mafiapp_enemies, {name,
+  info = []}).
 
 start(normal, []) ->
   mnesia:wait_for_tables([mafiapp_friends,
-    mafiapp_services], 5000),
+    mafiapp_services,
+    mafiapp_enemies], 5000),
   mafiapp_sup:start_link().
 
 stop(_) -> ok.
@@ -85,26 +88,41 @@ add_service(From, To, Date, Description) ->
 
 debts(Name) ->
   Match = ets:fun2ms(
-    fun(#mafiapp_services{from=From, to=To}) when From =:= Name ->
-      {To,-1};
-      (#mafiapp_services{from=From, to=To}) when To =:= Name ->
-        {From,1}
+    fun(#mafiapp_services{from = From, to = To}) when From =:= Name ->
+      {To, -1};
+      (#mafiapp_services{from = From, to = To}) when To =:= Name ->
+        {From, 1}
     end),
   F = fun() -> mnesia:select(mafiapp_services, Match) end,
-  Dict = lists:foldl(fun({Person,N}, Dict) ->
+  Dict = lists:foldl(fun({Person, N}, Dict) ->
     dict:update(Person, fun(X) -> X + N end, N, Dict)
                      end,
     dict:new(),
     mnesia:activity(transaction, F)),
-  lists:sort([{V,K} || {K,V} <- dict:to_list(Dict)]).
+  lists:sort([{V, K} || {K, V} <- dict:to_list(Dict)]).
+
+add_enemy(Name, Info) ->
+  F = fun() -> mnesia:write(#mafiapp_enemies{name=Name, info=Info}) end,
+  mnesia:activity(transaction, F).
+
+find_enemy(Name) ->
+  F = fun() -> mnesia:read({mafiapp_enemies, Name}) end,
+  case mnesia:activity(transaction, F) of
+    [] -> undefined;
+    [#mafiapp_enemies{name=N, info=I}] -> {N,I}
+  end.
+
+enemy_killed(Name) ->
+  F = fun() -> mnesia:delete({mafiapp_enemies, Name}) end,
+  mnesia:activity(transaction, F).
 
 %% Create the schema on the nodes specified in the Nodes list.
 %% Then, we start Mnesia, which is a necessary step in order to create tables.
 %% We create the two tables, named after the records #mafiapp_friends{} and #mafiapp_services{}.
 %% There's an index on the expertise because we do expect to search friends by expertise in case of need, as mentioned earlier.
 install(Nodes) ->
-  ok = mnesia:create_schema(Nodes), %% Need to do it before starting Mnesia
-  rpc:multicall(Nodes, application, start, [mnesia]), %% Need to start Mnesia on all of the Nodes
+  ok = mnesia:create_schema(Nodes),
+  application:start(mnesia),
   mnesia:create_table(mafiapp_friends,
     [{attributes, record_info(fields, mafiapp_friends)},
       {index, [#mafiapp_friends.expertise]},
@@ -114,4 +132,8 @@ install(Nodes) ->
       {index, [#mafiapp_services.to]},
       {disc_copies, Nodes},
       {type, bag}]),
-  rpc:multicall(Nodes, application, stop, [mnesia]).
+  mnesia:create_table(mafiapp_enemies,
+    [{attributes, record_info(fields, mafiapp_enemies)},
+      {disc_copies, Nodes},
+      {local_content, true}]),
+  application:stop(mnesia).

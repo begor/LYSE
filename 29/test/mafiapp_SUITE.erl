@@ -3,9 +3,9 @@
 -export([init_per_suite/1, end_per_suite/1,
   init_per_testcase/2, end_per_testcase/2,
   all/0]).
--export([add_service/1, friend_by_name/1, friend_with_services/1, friend_by_expertise/1, accounts/1]).
+-export([add_service/1, friend_by_name/1, friend_with_services/1, friend_by_expertise/1, accounts/1, enemies/1]).
 
-all() -> [add_service, friend_by_name, friend_with_services, friend_by_expertise, accounts].
+all() -> [add_service, friend_by_name, friend_with_services, friend_by_expertise, accounts, enemies].
 
 %% services can go both way: from a friend to the boss, or
 %% from the boss to a friend! A boss friend is required!
@@ -37,6 +37,16 @@ friend_by_name(_Config) ->
     _Contact, _Info, music,
     _Services} = mafiapp:friend_by_name("Pete Cityshend"),
   undefined = mafiapp:friend_by_name(make_ref()).
+
+enemies(_Config) ->
+  undefined = mafiapp:find_enemy("Edward"),
+  ok = mafiapp:add_enemy("Edward", [{bio, "Vampire"},
+    {comment, "He sucks (blood)"}]),
+  {"Edward", [{bio, "Vampire"},
+    {comment, "He sucks (blood)"}]} =
+    mafiapp:find_enemy("Edward"),
+  ok = mafiapp:enemy_killed("Edward"),
+  undefined = mafiapp:find_enemy("Edward").
 
 friend_with_services(_Config) ->
   ok = mafiapp:add_friend("Someone", [{other, "at the fruit stand"}],
