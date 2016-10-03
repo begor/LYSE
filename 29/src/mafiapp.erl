@@ -2,7 +2,7 @@
 -behaviour(application).
 -include_lib("stdlib/include/ms_transform.hrl").
 
--export([install/1, start/2, stop/1, add_friend/4, add_service/4, friend_by_name/1, friend_by_expertise/1]).
+-export([install/1, start/2, stop/1, add_friend/4, add_service/4, friend_by_name/1, friend_by_expertise/1, debts/1]).
 
 -record(mafiapp_friends, {name,
   contact = [],
@@ -82,6 +82,21 @@ add_service(From, To, Date, Description) ->
     end
       end,
   mnesia:activity(transaction, F).
+
+debts(Name) ->
+  Match = ets:fun2ms(
+    fun(#mafiapp_services{from=From, to=To}) when From =:= Name ->
+      {To,-1};
+      (#mafiapp_services{from=From, to=To}) when To =:= Name ->
+        {From,1}
+    end),
+  F = fun() -> mnesia:select(mafiapp_services, Match) end,
+  Dict = lists:foldl(fun({Person,N}, Dict) ->
+    dict:update(Person, fun(X) -> X + N end, N, Dict)
+                     end,
+    dict:new(),
+    mnesia:activity(transaction, F)),
+  lists:sort([{V,K} || {K,V} <- dict:to_list(Dict)]).
 
 %% Create the schema on the nodes specified in the Nodes list.
 %% Then, we start Mnesia, which is a necessary step in order to create tables.
